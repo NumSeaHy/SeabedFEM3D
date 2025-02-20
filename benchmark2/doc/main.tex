@@ -1,0 +1,101 @@
+\documentclass{article}[a4paper, 12pt]
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+\usepackage{booktabs}
+% \usepackage{bbm}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{xcolor} % to access the named colour LightGray
+\definecolor{LightGray}{gray}{0.9}
+\usepackage{graphics,graphicx}
+\usepackage{cancel}
+% \usepackage[outputdir=./build]{minted}
+% \usepackage{textgreek}
+\usepackage[
+    top=2cm,
+    bottom=2cm,
+    left=3cm,
+    right=3cm
+]{geometry}
+\usepackage{caption}    % caption options
+\captionsetup{labelfont=bf}
+\usepackage{empheq}
+\usepackage{bm}
+\usepackage{hyperref}
+
+\input{styles/macros} % Adjust path if needed
+
+
+\DeclareMathOperator{\diver}{\mathrm{div}}
+\DeclareMathOperator{\grad}{\nabla}
+
+  
+\title{Benchmark 2}
+\author{Pablo Rubial}
+\date{NumSeaHy}
+
+\begin{document}
+\maketitle
+
+The problem solved in this Benchmark is the one illustrated in Figure \ref{bench1}
+
+\begin{figure}[h!]
+ \centering
+ \input{../images/hankel2}
+ \caption{2D section of the domain of the Benchmark solved}
+ \label{bench1}
+\end{figure}
+
+that in 3D it converts in a cube. The main problem is that the analyttical solution of this problem is given by:
+
+\begin{equation}\label{pressure}
+    \Pic{F}(x,y,x) = \Pi_0 \frac{h_0^{(1)}\left(\kc{F}\displaystyle \sqrt{(x-x_0)^2 + (y-y_0)^2 + (z-z_0)^2}\right)}{h_0^{(1)}(\kc{F}R)}
+\end{equation}
+
+where $R$ denotes the ficticious radius of a circle centrated in $\frac{H}{2}$, this problem is equivalent to the problem of the pulsating sphere because the condition that we are given in the trace of the scattering object, is the emmited field by an sphere situated at $(0,\frac{H}{2})$ evaluted on the trace of the scattering object.
+
+The main difficulty of this is that $\texttt{SpecialFunctions}$ Julia library don't have implemented the spherical Hankel functions, so one have to rewrite they based on the cilindircal Hankel functions as follows:
+
+
+\begin{equation}
+  h_n^{(1)}(x) = \sqrt{\frac{\pi}{2x}}H_{n+\frac{1}{2}}^{(1)}(x)
+\end{equation}
+
+and the derivative of the previous function, can be written as follows:
+
+
+\begin{align}
+  \frac{\partial}{\partial x}\left(h_n^{(1)}(x)\right) &= \frac{1}{2}\left(h_{n-1}^{(1)}(x) - \frac{h_n^{(1)}(x) + xh_{(n+1)}^{(1)}(x)}{x}\right)\\[1.5ex]
+  &= \sqrt{\frac{\pi}{8x}}\left(H_{-\frac{1}{2}}^{(1)}(x)-\frac{H_{\frac{1}{2}}^{(1)}(x) + xH_{\frac{3}{2}}^{(1)}(x)}{x}\right)
+\end{align}
+
+So computing the displacement field from the pressure field \eqref{pressure}, it holds
+
+
+\begin{equation}
+  \uc{F}(x,y,x) = \frac{1}{\rhoc{F}\omega^2}\nabla\Pic{F}(x,y,z)
+\end{equation}
+
+so keeping this in mind, the $x$ component of the field can be written as follows:
+
+\begin{align*}
+    \bm{u}_{\mathrm{F}_x} &= 
+    \frac{\Pi_0\kc{F}}{2\rhoc{F}\omega^2\sqrt{\displaystyle\frac{\pi}{2\kc{F}R}}H_{\frac{1}{2}}^{(1)}(\kc{F}R)} \sqrt{\frac{\pi}{2\kc{F}||\bm{x}-\bm{x}_0||}}\left(H_{-\frac{1}{2}}^{(1)}\left(\kc{F}||\bm{x}-\bm{x}_0||\right)-\frac{H_{\frac{1}{2}}^{(1)}\left(\kc{F}||\bm{x}-\bm{x}_0||\right)}{\kc{F}||\bm{x}-\bm{x}_0||} + H_{\frac{3}{2}}^{(1)}\left(\kc{F}||\bm{x}-\bm{x}_0||\right)\right)\\[1.5ex]
+    &=\frac{\left(x-x_0\right)}{||\bm{x}-\bm{x}_0||}
+\end{align*}
+
+
+\begin{align*}
+    \bm{u}_{\mathrm{F}_x} &= 
+    \frac{\Pi_0\kc{F}}{2\rhoc{F}\omega^2\sqrt{\displaystyle\frac{\pi}{2\kc{F}R}}H_{\frac{1}{2}}^{(1)}(\kc{F}R)} \sqrt{\frac{\pi}{2\kc{F}||\bm{x}-\bm{x}_0||}}\left(H_{-\frac{1}{2}}^{(1)}\left(\kc{F}||\bm{x}-\bm{x}_0||\right)-\frac{H_{\frac{1}{2}}^{(1)}\left(\kc{F}||\bm{x}-\bm{x}_0||\right)}{\kc{F}||\bm{x}-\bm{x}_0||} + H_{\frac{3}{2}}^{(1)}\left(\kc{F}||\bm{x}-\bm{x}_0||\right)\right)\\[1.5ex]
+    &=\frac{\left(y-y_0\right)}{||\bm{x}-\bm{x}_0||}
+\end{align*}
+
+
+\begin{align*}
+    \bm{u}_{\mathrm{F}_x} &= 
+    \frac{\Pi_0\kc{F}}{2\rhoc{F}\omega^2\sqrt{\displaystyle\frac{\pi}{2\kc{F}R}}H_{\frac{1}{2}}^{(1)}(\kc{F}R)} \sqrt{\frac{\pi}{2\kc{F}||\bm{x}-\bm{x}_0||}}\left(H_{-\frac{1}{2}}^{(1)}\left(\kc{F}||\bm{x}-\bm{x}_0||\right)-\frac{H_{\frac{1}{2}}^{(1)}\left(\kc{F}||\bm{x}-\bm{x}_0||\right)}{\kc{F}||\bm{x}-\bm{x}_0||} + H_{\frac{3}{2}}^{(1)}\left(\kc{F}||\bm{x}-\bm{x}_0||\right)\right)\\[1.5ex]
+    &=\frac{\left(z-z_0\right)}{||\bm{x}-\bm{x}_0||}
+\end{align*}
+
+\end{document}

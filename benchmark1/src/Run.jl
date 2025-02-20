@@ -7,9 +7,6 @@ using Gridap
 using Gridap.Fields
 using Gridap.Geometry
 using  GridapGmsh
-using PyPlot
-PyPlot.rc("text", usetex=true)
-PyPlot.rc("font", family="serif")
 
 # Include the files with the functions to define the mesh and the physical parameters
 include("./Configuration.jl")
@@ -19,11 +16,6 @@ function RunFEM(name)
     
     # Load the mesh
     model = GmshDiscreteModel("data/" * "$name" * ".msh")
-
-    # Define the tags of the mesh boundary
-    # dimension = 3
-    # labels = get_face_labeling(model)
-    # tags = get_face_tag(labels, dimension)
 
     # Define the finite element space: Raviart-Thomas of order 1
     order = 1
@@ -43,12 +35,12 @@ function RunFEM(name)
     xp = get_physical_coordinate(Ω)
 
 
-    Γ = BoundaryTriangulation(model, tags="Sphere Surface")
+    Γ = BoundaryTriangulation(model, tags="Sphere")
     dΓ = Measure(Γ, degree)
     nb = get_normal_vector(Γ) # Normal vector to the source boundary
 
     # Define the analytical solution
-    u_analytical(x) = spherical_field(x, x₀, y₀, z₀, r, k, ρ, P_0, ω)
+    u_analytical(x) = spherical_field(x, 0, H/2, 0, r, k, ρ, P_0, ω)
     AnalyticalBox(x) =  (abs(x[1]) < L/2 && abs(x[3]) < w/2 && x[2] > 0 && (x[2]-H) < 0) ? 1 : 0
 
     # Define the tensors H, H^-1 and the Jacobian for the fluid PML only in the horizontal direction (quadratic profile)
@@ -68,8 +60,7 @@ function RunFEM(name)
             ∫( ρ * (Jinv ∘ xp) * (((Hm ∘ xp) ⋅ u) ⋅ ((Hm ∘ xp) ⋅ v)) * ω^2 )*dΩ
 
     # Source term
-    # b(v) = ∫((J ∘ xp) * P_0 *(v ⋅ nb))*dΓ
-    b(v) = ∫((v⋅nb) * (-P_0))dΓ # Look that the sign has been changed due to the normal vector points inside the boundary instead of outside it.
+    b(v) = ∫((v⋅nb) * (-P_0))dΓ 
 
     # Assembly the system
     op = AffineFEOperator(a, b, U, V)
@@ -99,30 +90,4 @@ function RunFEM(name)
 
 end 
 
-Meshes = ["coarse", "medium", "fine", "extrafine"]
-N = [4, 8, 12, 16]
-errors = zeros(length(N))
 
-for (i, data) in enumerate(Meshes)
-    errors[i] = RunFEM(data)
-end
-
-figure()
-loglog(N, errors, marker="o", linestyle="-", color="k")
-xlabel(L"$N$ [Element per wavelength]", fontsize=12)
-ylabel(L"$e_N$", fontsize=12)
-grid(true, which="both", linestyle="--", linewidth=0.7)  # Add grid lines
-tight_layout()
-savefig("./images/convergenceplot.pdf", transparent=true)
-display(gcf())
-
-N_marron = [12, 14, 16, 18]
-errors_marron = [5.886096467347674, 4.600286672113216, 3.639314489646429, 3.1542201014075197]
-figure()
-loglog(N_marron, errors_marron, marker="o", linestyle="-", color="k")
-xlabel(L"$N$ [Element per wavelength]", fontsize=12)
-ylabel(L"$e_N[\%]$", fontsize=12)
-grid(true, which="both", linestyle="--", linewidth=0.7)  # Add grid lines
-tight_layout()
-savefig("./images/convergenceplot_marron.pdf", transparent=true)
-display(gcf())

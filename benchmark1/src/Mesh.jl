@@ -5,12 +5,6 @@ using GridapGmsh
 
 include("Configuration.jl") 
 
-
-
-
-
- # See how to extract this value from the value that Andres specified to me: h = (c/f)/15
-
 function FunMesh(L, H, w, r, d_PML, x₀, y₀, z₀, c, f, N, name)
 
     # Initialize Gmsh and add a model
@@ -59,8 +53,6 @@ function FunMesh(L, H, w, r, d_PML, x₀, y₀, z₀, c, f, N, name)
     # Set the mesh size
     gmsh.model.mesh.setSize(gmsh.model.getEntities(0), h1)
 
-
-
     # Synchronize to register the physical group
     gmsh.model.occ.synchronize()
 
@@ -83,5 +75,5 @@ NumberElements = [6, 9, 12, 15]
 Meshes = ["coarse", "medium", "fine", "extrafine"]
 
 for (i, data) in enumerate(NumberElements)
-    FunMesh(L, H, w, r, d_PML, x₀, y₀, z₀, c, f, data, Meshes[i])
+    FunMesh(L, H, w, r, d_PML, x₀, y₀, z₀, c_F(ω), f, data, Meshes[i])
 end

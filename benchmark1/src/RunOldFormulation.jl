@@ -55,16 +55,11 @@ J(x) = det(Hm(x))
 Jinv(x) = 1/J(x)
 
 # Bilinear term
-# a(u, v) = ∫( ρ * c^2 * (Jinv ∘ xp) * divergence(u) * divergence(v) )*dΩ-
-#           ∫( ρ * (Jinv ∘ xp) * (((Hm ∘ xp) ⋅ u) ⋅ ((Hm ∘ xp) ⋅ v)) * ω^2 )*dΩ
-
 a(u, v) = ∫(  ρ * c^2  * (J ∘ xp) * ((Hinv ∘ xp) ⊙ ∇(u)) ⋅ ((Hinv ∘ xp) ⊙ ∇(v)) )*dΩ -
           ∫(  ρ * (J ∘ xp) * (u⋅v) * ω^2 )*dΩ
 
-
 # Source term
-b(v) = ∫((J ∘ xp) * P_0 *(v ⋅ nb))*dΓ
-# b(v) = ∫((v⋅nb) * P_0)dΓ # Look that the sign has been changed due to the normal vector points inside the boundary instead of outside it.
+b(v) = ∫((J ∘ xp) * -P_0 *(v ⋅ nb))*dΓ
 
 # Assembly the system
 op = AffineFEOperator(a, b, U, V)
