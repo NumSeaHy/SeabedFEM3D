@@ -34,7 +34,7 @@ docs/site/
 *.pvtu
 *.msh
 *.jld2
-*.vsm
+*.pvsm
 *.step
 *.brep
 *.stl
