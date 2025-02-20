@@ -11,13 +11,13 @@ using .Boxes
 # Initialize Gmsh and add a model
 gmsh.initialize()
 gmsh.option.setNumber("Mesh.Algorithm3D", 10) # Number 10 is the Delaunay algorithm for 3D meshing that is more robust than the frontal one
-gmsh.option.setNumber("Mesh.MinimumElementsPerTwoPi", 2) 
+gmsh.option.setNumber("Mesh.MinimumElementsPerTwoPi", 3) 
 gmsh.model.add("BuriedClams")
 
 
 # Mesh size parameter (ensure variables c and f are defined in Configuration.jl)
-h_f = c_F(ω) / (15 * f)
-h_p = c_P(ω) / (15 * f)
+h_f = c_F(ω) / (10 * f)
+h_p = c_P(ω) / (10 * f)
 
 # Fluid domain
 fluid = add_box_to_gmsh(-L/2, t_P, -w/2, L, t_F, w, "Fluid")
@@ -116,6 +116,26 @@ gmsh.model.occ.affineTransform([(object[1][1], object[1][2])], scaling_matrix)
 # Compute the new bounding box
 xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.occ.getBoundingBox(object[1][1], object[1][2])
 
+scale_factor = 3
+scaling_matrix = [
+    scale_factor, 0, 0, 0,  # X scale
+    0, scale_factor, 0, 0,  # Y scale
+    0, 0, scale_factor, 0,  # Z scale            # Homogeneous component for affine transformations
+]
+gmsh.model.occ.affineTransform([(object[1][1], object[1][2])], scaling_matrix)
+
+θ = π/2
+rotation_matrix = [
+    cos(θ), -sin(θ), 0, 0,  # X rotation
+    sin(θ), cos(θ), 0, 0,  # Y rotation
+    0, 0, 1, 0,  # Z rotation
+]
+
+gmsh.model.occ.affineTransform([(object[1][1], object[1][2])], rotation_matrix)
+
+# Compute the new bounding box
+xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.occ.getBoundingBox(object[1][1], object[1][2])
+
 # Translate the geometry to the center of the domain
 dx = (-xmax-xmin)/2
 dy = 1/2*(t_P - ymax - ymin)
@@ -126,6 +146,8 @@ gmsh.model.occ.translate([(3, object[1][2])], 0, 0, dz)
 
 # Compute the new bounding box
 xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.occ.getBoundingBox(object[1][1], object[1][2])
+
+# gmsh.model.occ.synchronize()
 
 # Perform a boolean subtraction (subtract the sphere from the box)
 cut_operation = gmsh.model.occ.cut([(3, porous.tag)], [(object[1][1], object[1][2])])
@@ -258,8 +280,6 @@ ov_p = gmsh.model.getBoundary([(3, porous_domain.tag) for porous_domain in all_p
 # Set a specific mesh size to each of that points
 gmsh.model.mesh.setSize(ov_f, h_f)
 gmsh.model.mesh.setSize(ov_p, h_p)
-
-gmsh.model.mesh.setSize(gmsh.model.getEntities(0), h1)
 
 # Generate a 3D mesh
 gmsh.model.mesh.generate(3)

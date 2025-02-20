@@ -23,7 +23,7 @@ docs/site/
 # Allow only PDF files in any build subfolder, even deeply nested
 !**/build/**/*.pdf
 
-# Ignore all tjhe files inside doc
+# Ignore all the files inside doc
 **/doc/**
 !**/doc/**/*.pdf
 !**/doc/**/*.tex

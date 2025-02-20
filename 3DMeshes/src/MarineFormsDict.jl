@@ -13,6 +13,9 @@ abstract type MarineForms end
 "Definition of the abstract type Sphere."
 abstract type Sphere <: MarineForms end
 
+"Definition of the abstract type Cockle"
+abstract type Cockle <: MarineForms end
+
 "Definition of the Porous Sphere object."
 struct PorousSphere <: Sphere
     x::Float64 # x-coordinate of the center of the Sphere
@@ -29,6 +32,17 @@ struct RigidSphere <: Sphere
     z::Float64 # z-coordinate of the center of the Sphere
     r::Float64 # Radius of the Sphere
     tol::Float64 # Tolerance of the Sphere to avoid collisions with the boundaries of the physical domain
+end
+
+"Definition of the rigid Cockle object."
+struct RigidCockle <: Cockle
+    brep_path::String # Path to the Cockle Brep file
+    x::Float64 # x-coordinate of the center of the Cockle
+    y::Float64 # y-coordinate of
+    z::Float64 # z-coordinate of the center of the Cockle
+    θ::Float64 # Spherical coordinate θ to manage the orientation of the Cockle
+    φ::Float64 # Spherical coordinate φ to manage the orientation of the Cockle
+    r::Float64 # Radius of spherical coordinate to manage the scale of the Cockle
 end
 
 "This function defines a template for the generation of marine forms and display an error message if the type is not implemented."
