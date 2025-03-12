@@ -7,7 +7,7 @@ using BoundingSphere
 using Gmsh
 
 # Export the functions of this module that are going to be used in other modules
-export generate_animals, PorousSphere, RigidSphere, RigidCockle, generate_geometry
+export generate_animals, PorousSphere, RigidSphere, RigidCockle, generate_geometry, get_evolving_sphere
 
 "Definition of the abstract type MarineForms."
 abstract type MarineForms end
@@ -18,10 +18,19 @@ abstract type Sphere <: MarineForms end
 "Definition of the abstract type Cockle"
 abstract type Cockle <: MarineForms end
 
-struct EnvolvingSphere
-    path::String
-    center::Tuple{Float64, Float64, Float64}
-    radius::Float64
+# Global cache: maps a brep_path to a tuple of (center, radius)
+const EVOLVING_SPHERE_CACHE = Dict{String, Tuple{Vector{Float64}, Float64}}()
+
+# This function checks if the value is cached; if not, computes and caches it.
+function get_cached_center_and_radius(brep_path::String)
+    if haskey(EVOLVING_SPHERE_CACHE, brep_path)
+        return EVOLVING_SPHERE_CACHE[brep_path]
+    else
+        # Call the expensive computation
+        center, radius = get_evolving_sphere(brep_path)
+        EVOLVING_SPHERE_CACHE[brep_path] = (center, radius)
+        return center, radius
+    end
 end
 
 "Definition of the Porous Sphere object."
@@ -54,6 +63,13 @@ mutable struct RigidCockle <: Cockle
     β::Float64 # Pitch angle to manage the orientation of the Cockle
     γ::Float64 # Roll angle to manage the orientation of the Cockle
     bounding_box::Tuple{Float64, Float64, Float64, Float64, Float64, Float64} # Bounding box of the Cockle
+    evolving_sphere_center::Vector{Float64}
+    evolving_sphere_radius::Float64
+
+    function RigidCockle(brep_path, x, y, z, scaled_radius, by_default_radius, α, β, γ, bounding_box)
+        center, radius = get_cached_center_and_radius(brep_path)
+        new(brep_path, x, y, z, scaled_radius, by_default_radius, α, β, γ, bounding_box, center, radius)
+    end
 end
 
 "Auxiliary functions to define the yaw, pitch and roll rotation angles"
@@ -175,17 +191,6 @@ function generate_geometry(animal::RigidCockle)
     # Apply the scaling transformation
     gmsh.model.occ.affineTransform([(object[1][1], object[1][2])], scaling_matrix)
 
-    # Get the bounding box of the object to make the translation
-    xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.occ.getBoundingBox(object[1][1], object[1][2])
-    
-    # Translate the current object based on the desired animal position
-    dx = animal.x - (xmax + xmin) / 2
-    dy = animal.y - (ymax + ymin) / 2
-    dz = animal.z - (zmax + zmin) / 2
-
-    # Apply the translation
-    gmsh.model.occ.translate([(object[1][1], object[1][2])], dx, dy, dz)
-
     # Apply the rotation. Constructing the rotation matrix based on yaw, pth, roll angles of the object
     rotation_matrix = Rz(animal.α) * Ry(animal.β) * Rx(animal.γ)
     
@@ -198,6 +203,17 @@ function generate_geometry(animal::RigidCockle)
 
     # Apply the rotation by using the affine transformation
     gmsh.model.occ.affineTransform([(object[1][1], object[1][2])], rotation_matrix_gmsh)
+
+    # Get the bounding box of the object to make the translation
+    xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.occ.getBoundingBox(object[1][1], object[1][2])
+
+    # Translate the current object based on the desired animal position
+    dx = animal.x - (xmax + xmin) / 2
+    dy = animal.y - (ymax + ymin) / 2
+    dz = animal.z - (zmax + zmin) / 2
+
+    # Apply the translation
+    gmsh.model.occ.translate([(object[1][1], object[1][2])], dx, dy, dz)
 
     # Get the bounding box of the object after all the operations to update the bounding box of the object and then detect the object
     xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.occ.getBoundingBox(object[1][1], object[1][2])
@@ -252,15 +268,24 @@ function check_collisions(form1::Sphere, form2::Sphere)
 end
 
 function check_collisions(form1::Cockle, form2::Cockle)
-    center1, radius1 = get_evolving_sphere(form1)
-    center2, radius2 = get_evolving_sphere(form2)
+    # Translate the center of the form1 to the Cockle desired position
+    center1 = [form1.evolving_sphere_center[1] + (form1.x-form1.evolving_sphere_center[1]), form1.evolving_sphere_center[2] +  (form1.y-form1.evolving_sphere_center[2]), form1.evolving_sphere_center[3] + (form1.z-form1.evolving_sphere_center[3])]
+    # Scale the radius of the form1 to the desired size taking into account the desire radius of the Cockle
+    radius1 = form1.evolving_sphere_radius * form1.scaled_radius/form1.by_default_radius 
 
-    return sqrt((center1[1] - center2[1])^2 + (center1[2] - center2[2])^2 + (center1[3] - center2[3])^2) < (radius1 + radius2)  # Condition to have a collision 
+    # Translate the center of the form2 to the Cockle desired position
+    center2 = [form2.evolving_sphere_center[1] + (form2.x-form2.evolving_sphere_center[1]), form2.evolving_sphere_center[2] +  (form2.y-form2.evolving_sphere_center[2]), form2.evolving_sphere_center[3] + (form2.z-form2.evolving_sphere_center[3])]
+    # Scale the radius of the form2 to the desired size taking into account the desire radius of the Cockle
+    radius2 = form2.evolving_sphere_radius * form2.scaled_radius/form2.by_default_radius
+
+    return sqrt((center1[1] - center2[1])^2 + (center1[2] - center2[2])^2 + (center1[3] - center2[3])^2) < (radius1 + radius2 + max(radius1/2, radius2/2))  # Condition to have a collision 
 end
 
 
 function check_collisions(form1::Cockle, form2::Sphere)
-    cockle_sphere_center, cockle_sphere_radius = get_evolving_sphere(form1)
+    cockle_sphere_center = [form1.evolving_sphere_radius[1] + (form1.x-form1.evolving_sphere_radius[1]), form1.evolving_sphere_radius[2] +  (form1.y-form1.evolving_sphere_radius[2]), form1.evolving_sphere_radius[3] + (form1.z-form1.evolving_sphere_radius[3])]
+    
+    cockle_sphere_radius = form1.evolving_sphere_radius * form1.scaled_radius/form1.by_default_radius 
 
     return sqrt((form2.x - cockle_sphere_center[1])^2 + (form2.y - cockle_sphere_center[2])^2 + (form2.z - cockle_sphere_center[3])^2) < (form2.r + cockle_sphere_radius)  # Condition to have a collision 
 end
@@ -291,7 +316,7 @@ function is_collision_free(new_animal::MarineForms, existing_animals::Vector{Mar
 end
 
 
-function get_evolving_sphere(form::RigidCockle)
+function get_evolving_sphere(brep_path::String)
     
     # Import the solid from the brep file using OpenCascade Python API
     breptools = pyimport("OCC.Core.BRepTools")
@@ -300,7 +325,7 @@ function get_evolving_sphere(form::RigidCockle)
     # Create objects to read the BRep file
     builder = occ.BRep.BRep_Builder()
     shape = occ.TopoDS.TopoDS_Shape()
-    breptools.breptools_Read(shape, form.brep_path, builder)
+    breptools.breptools_Read(shape, brep_path, builder)
 
     # Import required OCC modules
     TopExp = pyimport("OCC.Core.TopExp")
@@ -331,68 +356,9 @@ function get_evolving_sphere(form::RigidCockle)
     # Compute the bounding sphere of the points
     center, radius = boundingsphere(points_correct_type_mm)
 
-    # Translate the center to the Cockle desired position
-    center = [center[1] + (form.x-center[1]), center[2] +  (form.y-center[2]), center[3] + (form.z-center[3])]
+    return center, radius
     
-    # Scale the sphere to the desired size taking into account the desire radius of the Cockle
-    scale_factor = form.r / radius
-    radius *= scale_factor
-    
-    return center, radius 
-
 end
-
-function set_brep_evolving_sphere(brep_path::String)
-     
-    # Import the solid from the brep file using OpenCascade Python API
-     breptools = pyimport("OCC.Core.BRepTools")
-     occ = pyimport("OCC.Core")
- 
-     # Create objects to read the BRep file
-     builder = occ.BRep.BRep_Builder()
-     shape = occ.TopoDS.TopoDS_Shape()
-     breptools.breptools_Read(shape, brep_path, builder)
- 
-     # Import required OCC modules
-     TopExp = pyimport("OCC.Core.TopExp")
-     TopAbs = pyimport("OCC.Core.TopAbs")
-     TopoDS = pyimport("OCC.Core.TopoDS")
-     BRep = pyimport("OCC.Core.BRep")
- 
-     # Create an explorer for vertices in the shape
-     explorer = TopExp.TopExp_Explorer(shape, TopAbs.TopAbs_VERTEX)
- 
-     # Initialize an empty Julia array to hold the points
-     points = []
- 
-     # Iterate over all vertices in the shape
-     while explorer.More()
-         # Convert the current item to a vertex
-         vertex = TopoDS.topods_Vertex(explorer.Current())
-         # Get the point coordinates of the vertex
-         pnt = BRep.BRep_Tool.Pnt(vertex)
-         # Append the (x, y, z) tuple to the points array
-         push!(points, [pnt.X(), pnt.Y(), pnt.Z()])
-         # Move to the next vertex
-         explorer.Next()
-     end
- 
-     points_correct_type_mm = [v for v in points] .* 1e-3 # Convert the points to meters and to the data format expected by the  BoundingSphere package
-     
-     # Compute the bounding sphere of the points
-     center, radius = boundingsphere(points_correct_type_mm)
- 
-     # Translate the center to the Cockle desired position
-     center = [center[1] + (form.x-center[1]), center[2] +  (form.y-center[2]), center[3] + (form.z-center[3])]
-     
-     # Scale the sphere to the desired size taking into account the desire radius of the Cockle
-     scale_factor = form.r / radius
-     radius *= scale_factor
-     
-     return center, radius 
- 
-end
-
 
 end 
 

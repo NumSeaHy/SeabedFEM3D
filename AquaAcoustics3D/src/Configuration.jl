@@ -1,5 +1,14 @@
-# Warning! Once the code is functional, is recommendable to define all the parameters with a 
-# const value (i.e const a = 3), because this will optimize the use of Julia JIT
+"""
+This file contains the configuration parameters for run the simulation.
+"""
+
+# Importing the necessary libraries for compute the physical properties of the porous domain
+include("SedimentModels.jl")
+include("BiotStollFuncs.jl")
+
+
+using .SedimentModels
+using .BiotStollFuncs
 
 # Domain parametrization
 L = 1 # Length of the domain [m]
@@ -21,7 +30,8 @@ d_PML = 0.1 # Thickness of the PML [m]
     N_cockles = 1 # Number of cockles in the porous domain [-]
     by_default_radius =  0.075/2 # Default radius of the cockle measured in the real geometry[m]
     σ_r_cockle = 0.05 # Standard deviation of the radius of the cockle [m]
-    cockle_brep_path = "./clam_geometries/EntireClam.brep"
+    cockle_brep_path = "./cockle_geometries/Cockle.brep"
+    cockle_closed_brep_path = "./cockle_geometries/ClosedCockle.brep"
     max_iterations = 1000 # Maximum number of iterations to find a suitable position for the cockle
     
 
@@ -35,10 +45,13 @@ f = 5e3
 # Fluid domains properties
 ρ_F(ω) = 4000.
 c_F(ω) = 2000.
+η_F = 1.0e-3 # Dynamic viscosity of the fluid [Pa s]
 
-# Porous domain properties
-ρ_P = 1000.
-c_P(ω) = 3000.
+
+# Porous domain properties using the Biot-Stoll model
+sediment(ω) = predefined_sediment("MediumSilt"; ρF=ρ_F(ω), KF=ρ_F(ω)*c_F(ω)^2, η=η_F) # Check list_sediment(ω)s() for more options of predefined sediment(ω)s
+ρ_P(ω) = sediment(ω).β * sediment(ω).ρF + (1 - sediment(ω).β) * sediment(ω).ρr # Mass density of the porous domain [kg/m^3]
+c_P(ω) = compute_wave_properties(ω, sediment(ω))[1] + 1im*compute_wave_properties(ω, sediment(ω))[2]/ω*compute_wave_properties(ω, sediment(ω))[1]^2 # [1] returns the real part of the phase velocity and [2] the attenuation coefficient α
 
 # Wavenumbers associated with the fluid and porous domains
 k_F(ω) = ω/c_F(ω)

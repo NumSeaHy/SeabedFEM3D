@@ -10,7 +10,7 @@ using .Boxes
 
 # Initialize Gmsh and add a model
 gmsh.initialize()
-gmsh.option.setNumber("Mesh.Algorithm3D", 10) # Number 10 is the Delaunay algorithm for 3D meshing that is more robust than the frontal one
+gmsh.option.setNumber("Mesh.Algorithm3D", 10) # Number 10 is the Delaunay algorithm for 3D meshing that is more robust than the frontal one for Gridap reading
 gmsh.option.setNumber("Mesh.MinimumElementsPerTwoPi", 2) 
 gmsh.model.add("BuriedClams")
 

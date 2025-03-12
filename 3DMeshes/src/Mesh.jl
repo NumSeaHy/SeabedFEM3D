@@ -2,22 +2,44 @@ using Gmsh
 using Gridap
 using Gridap.Io
 using GridapGmsh
+using Distributions
 using Revise
 
-include("../src/Configuration.jl")
+include("Configuration.jl")
 includet("Boxes.jl")
+includet("MarineFormsDict2.jl")
 using .Boxes
+using .MarineForm2
+
+# Define the meshing alforithms available in Gmsh to then choose
+meshing_algorithms = Dict(
+    "Delaunay"           => 1, # The mesh is finished, but Gridap fails when trying to read the mesh (kind of error: error accesing element[0])
+    "Frontal"            => 4, # Good local mesh around the cockles, but the global mesh is not good (some very very small elements det ≈ 0 ?)
+    "Frontal Delaunay"   => 5, # Deprecated seems by looking at the Gmsh.pdf documentation
+    "Frontal Hex"        => 6, # I think that not make sense use a hexahedral mesh for this problem... and also seems to be deprecated
+    "MMG3D"              => 7,
+    "R-tree"             => 9, # Almost impossible to use with so complicated geometry... it takes a lot of time to generate the mesh
+    "HXT"                => 10,
+)
+
+algorithm = "Delaunay"
 
 # Initialize Gmsh and add a model
 gmsh.initialize()
-gmsh.option.setNumber("Mesh.Algorithm3D", 10) # Number 10 is the Delaunay algorithm for 3D meshing that is more robust than the frontal one
-gmsh.option.setNumber("Mesh.MinimumElementsPerTwoPi", 3) 
+# gmsh.option.setString("General.LogFile", "gmsh.log")
+gmsh.option.setNumber("Mesh.Algorithm3D", meshing_algorithms[algorithm])
+gmsh.option.setNumber("Mesh.MinimumElementsPerTwoPi", 6)
+# gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 20)
+gmsh.option.setNumber("Geometry.Tolerance", 1e-9)
+gmsh.option.setNumber("Mesh.OptimizeNetgen", 1)
+# gmsh.option.setNumber("Geometry.OCCThruSectionsDegree", 1)
 gmsh.model.add("BuriedClams")
 
 
 # Mesh size parameter (ensure variables c and f are defined in Configuration.jl)
-h_f = c_F(ω) / (10 * f)
-h_p = c_P(ω) / (10 * f)
+h_f = c_F(ω) / (15 * f)
+h_p = c_P(ω) / (15 * f)
+h_cockle = h_p/2
 
 # Fluid domain
 fluid = add_box_to_gmsh(-L/2, t_P, -w/2, L, t_F, w, "Fluid")
@@ -91,86 +113,73 @@ gmsh.model.occ.removeAllDuplicates()  # Clean up duplicates if needed
 
 gmsh.model.occ.synchronize()  # Single synchronize after loop
 
-# Open the .brep geometry file
-object = gmsh.model.occ.importShapes("./clam_geometries/EntireClam.brep")
-# # Since the geometry is imported in milimeters from FreeCAD is a must scale it to meters
-gmsh.model.occ.synchronize()
 
-# xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.occ.getBoundingBox(object[1][1], object[1][2])
+# Definition of the objects of the bottom
+definition = [
+    (RigidSphere, Dict(
+    :N => N_rigid_spheres,
+    :r_distribution => Normal(r, σ_r),
+    :x_range => (-L/2 + (r + 4*σ_r + tol_sphere), L/2 - (r + 4*σ_r + tol_sphere)),
+    :y_range => (0+(r + 4*σ_r + + tol_sphere), t_P-(r + 4*σ_r + + tol_sphere)),
+    :z_range => (-w/2 + (r + 4*σ_r + tol_sphere), w/2 - (r + 4*σ_r + tol_sphere)))),
+    
+    (PorousSphere, Dict(
+    :N => N_porous_spheres,
+    :r_distribution => Normal(r, σ_r),
+    :x_range => (-L/2 + (r + 4*σ_r + tol_sphere), L/2 - (r + 4*σ_r + tol_sphere)),
+    :y_range => (0+(r + 4*σ_r + + tol_sphere), t_P-(r + 4*σ_r + + tol_sphere)),
+    :z_range => (-w/2 + (r + 4*σ_r + tol_sphere), w/2 - (r + 4*σ_r + tol_sphere)))),
 
-# Translate the geometry to the center of the domain
-# # Define the scaling factor (0.001 to convert from millimeters to meters)
-scale_factor = 0.001
-
-# Apply the affine transformation for scaling rotation[] and translation
-scaling_matrix = [
-    scale_factor, 0, 0, 0,  # X scale
-    0, scale_factor, 0, 0,  # Y scale
-    0, 0, scale_factor, 0,  # Z scale            # Homogeneous component for affine transformations
+    (RigidCockle, Dict(
+    :N => N_cockles,
+    :brep_path => cockle_brep_path,
+    :r_distribution => Normal(by_default_radius, σ_r_cockle),
+    :by_default_radius => by_default_radius,
+    :x_range => (-L/2 + (by_default_radius + 4*σ_r_cockle), L/2 - (by_default_radius + 4*σ_r_cockle)),
+    :y_range => (0+(by_default_radius + 4*σ_r_cockle), t_P-(by_default_radius + 4*σ_r_cockle)),
+    :z_range => (-w/2 + (by_default_radius + 4*σ_r_cockle), w/2 - (by_default_radius + 4*σ_r_cockle)),
+    :α_range => (0, 2π),
+    :β_range => (0, π/2),
+    :γ_range => (0, 2π)))
 ]
 
-# # Apply scaling to all entities
-xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.occ.getBoundingBox(object[1][1], object[1][2])
+# Generate the animals
 
-# Apply the scaling transformation
-gmsh.model.occ.affineTransform([(object[1][1], object[1][2])], scaling_matrix)
+println("...Generating the scenarios...")
+animals = generate_animals(definition, max_iterations)
 
-# Compute the new bounding box
-xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.occ.getBoundingBox(object[1][1], object[1][2])
+rigid_cockle = [animal for animal in animals if isa(animal, RigidCockle)]
 
-Çscale_factor = 3
-scaling_matrix = [
-    scale_factor, 0, 0, 0,  # X scale
-    0, scale_factor, 0, 0,  # Y scale
-    0, 0, scale_factor, 0,  # Z scale            # Homogeneous component for affine transformations
-]
-gmsh.model.occ.affineTransform([(object[1][1], object[1][2])], scaling_matrix)
-
-θ = π/2
-rotation_matrix = [
-    cos(θ), -sin(θ), 0, 0,  # X rotation
-    sin(θ), cos(θ), 0, 0,  # Y rotation
-    0, 0, 1, 0,  # Z rotation
-]
-
-gmsh.model.occ.affineTransform([(object[1][1], object[1][2])], rotation_matrix)
-
-# Compute the new bounding box
-xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.occ.getBoundingBox(object[1][1], object[1][2])
-
-# Translate the geometry to the center of the domain
-dx = (-xmax-xmin)/2
-dy = 1/2*(t_P - ymax - ymin)
-dz = (-zmax-zmin)/2
-gmsh.model.occ.translate([(3, object[1][2])], dx, 0, 0)
-gmsh.model.occ.translate([(3, object[1][2])], 0, dy, 0)
-gmsh.model.occ.translate([(3, object[1][2])], 0, 0, dz)
-
-# Compute the new bounding box
-xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.occ.getBoundingBox(object[1][1], object[1][2])
-
-# gmsh.model.occ.synchronize()
+println("...Generating the geometries...")
+v_cockle = [generate_geometry(animal) for animal in rigid_cockle]
 
 # Perform a boolean subtraction (subtract the sphere from the box)
-cut_operation = gmsh.model.occ.cut([(3, porous.tag)], [(object[1][1], object[1][2])])
+cut_operation = gmsh.model.occ.cut([(3, porous.tag)], [(3, i) for i in v_cockle])
 
-gmsh.model.occ.synchronize()
-
-porous.tag = cut_operation[1][1][2]
-
-gmsh.model.occ.removeAllDuplicates()  # Clean up duplicates if needed
 gmsh.model.occ.synchronize()  # Single synchronize after loop
+
+# After the cut operation, the porous domain is the first element of the resulting list since it is the only volume that remains (cockle vanishes!)
+porous.tag = cut_operation[1][1][2]
 
 # Identify each of the surfaces
 surfaces = gmsh.model.occ.getEntities(2)
-surface_clam_marker = []
+surface_cockles_marker = []
 surface_boundaries_marker = []
+
 
 for surface in surfaces
     com = gmsh.model.occ.getCenterOfMass(surface[1], surface[2])
-    if xmin < com[1] < xmax && ymin < com[2] < ymax && zmin < com[3] < zmax
-        push!(surface_clam_marker, surface[2])
-    elseif (abs(com[1]) - L/2 - 0.99 * d_PML) > 0 || (abs(com[3]) - w/2 - 0.99 * d_PML) > 0 || (com[2] + 0.99 * d_PML) < 0 || (com[2] - t_P - t_F - 0.99 * d_PML) > 0
+
+    # Identify the surfaces where the cockles are located to apply the boundary condition of the incident field arriving
+    for cockle in rigid_cockle
+        xmin, ymin, zmin, xmax, ymax, zmax = cockle.bounding_box
+        if xmin < com[1] < xmax && ymin < com[2] < ymax && zmin < com[3] < zmax
+            push!(surface_cockles_marker, surface[2])
+        end
+    end
+    
+    # Identify the boundaries of the PML domain where the homogeneuous dirichlet boundary condition will be applied
+    if (abs(com[1]) - L/2 - 0.99 * d_PML) > 0 || (abs(com[3]) - w/2 - 0.99 * d_PML) > 0 || (com[2] + 0.99 * d_PML) < 0 || (com[2] - t_P - t_F - 0.99 * d_PML) > 0
         push!(surface_boundaries_marker, surface[2])
     end  
 end
@@ -224,6 +233,11 @@ pml_groups = Dict(
 )
 
 
+
+# Set the 2D-physical groups for the surfaces
+surface_cockles_marker = gmsh.model.addPhysicalGroup(2, surface_cockles_marker)
+surface_boundaries_marker = gmsh.model.addPhysicalGroup(2, surface_boundaries_marker)
+
 # Set 3D-physical groups for the fluid domain together with the fluid PMLs
 fluid_domain = gmsh.model.addPhysicalGroup(3, [fluid.tag])
 pml_xx_tag = gmsh.model.addPhysicalGroup(3, pml_groups["fluid_pml_xx"])
@@ -243,10 +257,6 @@ porous_pml_xy_tag = gmsh.model.addPhysicalGroup(3, pml_groups["porous_pml_xy"])
 porous_pml_yz_tag = gmsh.model.addPhysicalGroup(3, pml_groups["porous_pml_yz"])
 porous_pml_xz_tag = gmsh.model.addPhysicalGroup(3, pml_groups["porous_pml_xz"])
 porous_pml_xyz_tag = gmsh.model.addPhysicalGroup(3, pml_groups["porous_pml_xyz"])
-
-# Set 2D-Physical groups for the resulting fragments
-fluid_boundaries_tag = gmsh.model.addPhysicalGroup(2, surface_boundaries_marker)
-clam_objects_surface = gmsh.model.addPhysicalGroup(2, surface_clam_marker)
 
 # Set 3D-physical names for the fluid physical groups
 gmsh.model.setPhysicalName(3, fluid_domain, "Fluid")
@@ -269,8 +279,8 @@ gmsh.model.setPhysicalName(3, porous_pml_xz_tag, "porous_PML_xz")
 gmsh.model.setPhysicalName(3, porous_pml_xyz_tag, "porous_PML_xyz")
 
 # Set 2D-physical names for the physical groups
-gmsh.model.setPhysicalName(2, fluid_boundaries_tag, "Boundaries")
-gmsh.model.setPhysicalName(2, clam_objects_surface, "Clam")
+gmsh.model.setPhysicalName(2, surface_boundaries_marker, "Boundaries")
+gmsh.model.setPhysicalName(2, surface_cockles_marker, "Cockles")
 
 # Synchronize the model
 gmsh.model.occ.synchronize()
@@ -278,33 +288,35 @@ gmsh.model.occ.synchronize()
 # Get the points that constitutes each of the domains
 ov_f = gmsh.model.getBoundary([(3, fluid_domain.tag) for fluid_domain in all_fluid_domains], false, false, true)
 ov_p = gmsh.model.getBoundary([(3, porous_domain.tag) for porous_domain in all_porous_domains], false, false, true)
+ov_cockles = gmsh.model.getBoundary([(2, surface_cockles_marker[i]) for i in eachindex(surface_cockles_marker)], false, false, true)
 
 # Set a specific mesh size to each of that points
 gmsh.model.mesh.setSize(ov_f, h_f)
 gmsh.model.mesh.setSize(ov_p, h_p)
+gmsh.model.mesh.setSize(ov_cockles, h_cockle)
 
 # Generate a 3D mesh
 gmsh.model.mesh.generate(3)
 
 # Save the resulting mesh to a file
-gmsh.write("./data/fluid_clam_brep.msh")
+gmsh.write("./data/fluid_clam_brep_"*algorithm*".msh")
 
 # Finalize Gmsh session
 gmsh.finalize()
 
 # Convert the mesh to the Gridap format
-model = GmshDiscreteModel("./data/fluid_clam_brep.msh")
+model = GmshDiscreteModel("./data/fluid_clam_brep_"*algorithm*".msh")
 
 # Write the mesh to a vtk file
-writevtk(model,"./results/fluid_clam_brep")
+writevtk(model,"./results/fluid_clam_brep_"*algorithm)
 
-# Extract the boundary triangulation
-Γ = BoundaryTriangulation(model, tags="Clam")
+# # Extract the boundary triangulation
+# Γ = BoundaryTriangulation(model, tags="Clam")
 
-# Extract the normal vectors
-normals = get_normal_vector(Γ)
+# # Extract the normal vectors
+# normals = get_normal_vector(Γ)
 
-# Write the boundary triangulation to a vtk file
-writevtk(Γ, "./results/fluid_clam_brep_boundary", cellfields = ["Normals"=>normals])
+# # Write the boundary triangulation to a vtk file
+# writevtk(Γ, "./results/fluid_clam_brep_boundary", cellfields = ["Normals"=>normals])
 
 
