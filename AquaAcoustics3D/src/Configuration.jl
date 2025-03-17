@@ -2,9 +2,11 @@
 This file contains the configuration parameters for run the simulation.
 """
 
+using Revise
+
 # Importing the necessary libraries for compute the physical properties of the porous domain
-include("SedimentModels.jl")
-include("BiotStollFuncs.jl")
+includet("SedimentModels.jl")
+includet("BiotStollFuncs.jl")
 
 
 using .SedimentModels
@@ -27,19 +29,20 @@ d_PML = 0.05 # Thickness of the PML [m]
     tol_sphere = 0.5 * r # Tolerance for the spheres to avoid collisions with the boundaries of the physical domain
     
     # Cockle parametrization
-    N_cockles = 2 # Number of cockles in the porous domain [-]
+    N_open_cockles = 4 # Number of open cockles in the porous domain [-]
+    # open_cockle_brep_path = "./cockle_geometries/OpenCockle.brep"
+    N_closed_cockles = 4 # Number of closed cockles in the porous domain [-]
+    # cockle_closed_brep_path = "./cockle_geometries/ClosedCockle.brep"
     by_default_radius =  0.075/2 # Default radius of the cockle measured in the real geometry[m]
     σ_r_cockle = 0.01 # Standard deviation of the radius of the cockle [m]
-    cockle_brep_path = "./cockle_geometries/Cockle.brep"
-    cockle_closed_brep_path = "./cockle_geometries/ClosedCockle.brep"
-    max_iterations = 50000 # Maximum number of iterations to find a suitable position for the cockle
+    max_iterations = 100000 # Maximum number of iterations to find a suitable position for the cockle
     
 
 # Transducer pressure 
 P_0 = 5e5im
 
 # Frequency parameters
-f = 15e3
+f = 5e3
 ω = 2 * π * f
 
 # Fluid domains properties

@@ -7,7 +7,7 @@ using BoundingSphere
 using Gmsh
 
 # Export the functions of this module that are going to be used in other modules
-export generate_animals, PorousSphere, RigidSphere, RigidCockle, generate_geometry, get_evolving_sphere
+export generate_animals, PorousSphere, RigidSphere, RigidCockle, RigidCockleOpen, RigidCockleClosed, generate_geometry
 
 "Definition of the abstract type MarineForms."
 abstract type MarineForms end
@@ -70,6 +70,16 @@ mutable struct RigidCockle <: Cockle
         center, radius = get_cached_center_and_radius(brep_path)
         new(brep_path, x, y, z, scaled_radius, by_default_radius, α, β, γ, bounding_box, center, radius)
     end
+end
+
+# Constructor for Open Cockle
+function RigidCockleOpen(brep_path, x, y, z, scaled_radius, by_default_radius, α, β, γ, bounding_box)
+    return RigidCockle(brep_path, x, y, z, scaled_radius, by_default_radius, α, β, γ, bounding_box)
+end
+
+# Constructor for Closed Cockle
+function RigidCockleClosed(brep_path, x, y, z, scaled_radius, by_default_radius, α, β, γ, bounding_box)
+    return RigidCockle(brep_path, x, y, z, scaled_radius, by_default_radius, α, β, γ, bounding_box)
 end
 
 "Auxiliary functions to define the yaw, pitch and roll rotation angles"
@@ -142,30 +152,40 @@ function generate(::Type{PorousSphere}, params::Dict{Symbol,Any})
 end
 
 function generate(::Type{RigidCockle}, params::Dict{Symbol, Any})
-    brep_path = get(params, :brep_path, "")
-    x_range = get(params, :x_range, (0.0, 1.0))
-    y_range = get(params, :y_range, (0.0, 1.0))
-    z_range = get(params, :z_range, (0.0, 1.0))  
-    r_distribution = get(params, :r_distribution, Normal(1.0, 0.2))
-    by_default_radius = get(params, :by_default_radius, 1.0)
-    α_range = get(params, :α_range, (0.0, 0.0))
-    β_range = get(params, :β_range, (0.0, 0.0))
-    γ_range = get(params, :γ_range, (0.0, 0.0))
-    
+     # Read the desired cockle type from params. For example, it could be :open or :closed.
+     cockle_type = get(params, :cockle_type, :open)  
 
-    return RigidCockle(
-        brep_path,
-        x_range[1] + (x_range[2] - x_range[1]) * rand(), 
-        y_range[1] + (y_range[2] - y_range[1]) * rand(),
-        z_range[1] + (z_range[2] - z_range[1]) * rand(), 
-        rand(r_distribution),
-        by_default_radius, 
-        α_range[1] + (α_range[2] - α_range[1]) * rand(),  # TODO Yaw angle
-        β_range[1] + (β_range[2] - β_range[1]) * rand(), # TODO Pitch angle
-        γ_range[1] + (γ_range[2] - γ_range[1]) * rand(),  # TODO Roll angle
-        (0.0, 0.0, 0.0, 0.0, 0.0, 0.0)  # Bounding box
-    )
+     # Choose the brep_path based on the cockle type.
+     brep_path = cockle_type == :open ? "./geometry/cockle_geometries/OpenCockle.brep" : "./geometry/cockle_geometries/ClosedCockle.brep"
     
+     # Retrieve spatial and distribution parameters.
+     x_range        = get(params, :x_range, (0.0, 1.0))
+     y_range        = get(params, :y_range, (0.0, 1.0))
+     z_range        = get(params, :z_range, (0.0, 1.0))
+     r_distribution = get(params, :r_distribution, Normal(1.0, 0.2))
+     by_default_radius = get(params, :by_default_radius, 1.0)
+     α_range        = get(params, :α_range, (0.0, 0.0))
+     β_range        = get(params, :β_range, (0.0, 0.0))
+     γ_range        = get(params, :γ_range, (0.0, 0.0))
+ 
+     # Generate the random values (deterministic if RNG is seeded)
+     x = x_range[1] + (x_range[2] - x_range[1]) * rand()
+     y = y_range[1] + (y_range[2] - y_range[1]) * rand()
+     z = z_range[1] + (z_range[2] - z_range[1]) * rand()
+     scaled_radius = rand(r_distribution)
+     α = α_range[1] + (α_range[2] - α_range[1]) * rand()
+     β = β_range[1] + (β_range[2] - β_range[1]) * rand()
+     γ = γ_range[1] + (γ_range[2] - γ_range[1]) * rand()
+ 
+     # Placeholder for bounding box (adjust as needed)
+     bounding_box = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+ 
+     # Use the appropriate constructor based on cockle_type.
+     if cockle_type == :open
+         return RigidCockleOpen(brep_path, x, y, z, scaled_radius, by_default_radius, α, β, γ, bounding_box)
+     else
+         return RigidCockleClosed(brep_path, x, y, z, scaled_radius, by_default_radius, α, β, γ, bounding_box)
+     end
 end
 
 

@@ -1,5 +1,6 @@
-includet("MarineFormsDict2.jl")
-using .MarineForm2
+using Revise
+includet("MarineForms.jl")
+using .MarineForm
 include("Configuration.jl")
 using Distributions
 
@@ -20,16 +21,30 @@ definition = [
     :z_range => (-w/2 + (r + 4*σ_r + tol_sphere), w/2 - (r + 4*σ_r + tol_sphere)))),
 
     (RigidCockle, Dict(
-    :N => N_cockles,
-    :brep_path => cockle_brep_path,
-    :r_distribution => Normal(by_default_radius, σ_r_cockle),
-    :by_default_radius => by_default_radius,
-    :x_range => (-L/2 + (by_default_radius + 4*σ_r_cockle), L/2 - (by_default_radius + 4*σ_r_cockle)),
-    :y_range => (0+(by_default_radius + 4*σ_r_cockle), t_P-(by_default_radius + 4*σ_r_cockle)),
-    :z_range => (-w/2 + (by_default_radius + 4*σ_r_cockle), w/2 - (by_default_radius + 4*σ_r_cockle)),
-    :α_range => (0, 2π),
-    :β_range => (0, π/2),
-    :γ_range => (0, 2π)))
+        :cockle_type => :open, 
+        :N => N_open_cockles, 
+        :r_distribution   => Normal(by_default_radius, σ_r_cockle),
+        :by_default_radius=> by_default_radius,
+        :x_range          => (-L/2 + (by_default_radius + 4*σ_r_cockle), L/2 - (by_default_radius + 4*σ_r_cockle)),
+        :y_range          => (0 + (by_default_radius + 4*σ_r_cockle), t_P - (by_default_radius + 4*σ_r_cockle)),
+        :z_range          => (-w/2 + (by_default_radius + 4*σ_r_cockle), w/2 - (by_default_radius + 4*σ_r_cockle)),
+        :α_range          => (0, 2π),
+        :β_range          => (0, π/2),
+        :γ_range          => (0, 2π)
+    )),
+    
+    (RigidCockle, Dict(
+        :cockle_type => :closed, 
+        :N => N_closed_cockles,
+        :r_distribution   => Normal(by_default_radius, σ_r_cockle),
+        :by_default_radius=> by_default_radius,
+        :x_range          => (-L/2 + (by_default_radius + 4*σ_r_cockle), L/2 - (by_default_radius + 4*σ_r_cockle)),
+        :y_range          => (0 + (by_default_radius + 4*σ_r_cockle), t_P - (by_default_radius + 4*σ_r_cockle)),
+        :z_range          => (-w/2 + (by_default_radius + 4*σ_r_cockle), w/2 - (by_default_radius + 4*σ_r_cockle)),
+        :α_range          => (0, 2π),
+        :β_range          => (0, π/2),
+        :γ_range          => (0, 2π)
+    ))
 ]
 
 # Generate the animals

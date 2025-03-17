@@ -13,13 +13,13 @@ using .MarineForm
 
 # Define the meshing alforithms available in Gmsh to then choose
 meshing_algorithms = Dict(
-    "Delaunay"           => 1, # The mesh is finished, but Gridap fails when trying to read the mesh (kind of error: error accesing element[0])
+    "Delaunay"           => 1, # Best one, but should be used together with the option "Mesh.OptimizeNetgen = 1", if not Gridap will throw an erro
     "Frontal"            => 4, # Good local mesh around the cockles, but the global mesh is not good (some very very small elements det ≈ 0 ?)
     "Frontal Delaunay"   => 5, # Deprecated seems by looking at the Gmsh.pdf documentation
     "Frontal Hex"        => 6, # I think that not make sense use a hexahedral mesh for this problem... and also seems to be deprecated
     "MMG3D"              => 7,
-    "R-tree"             => 9, # Almost impossible to use with so complicated geometry... it takes a lot of time to generate the mesh
-    "HXT"                => 10,
+    "R-tree"             => 9, # Almost impossible to use with so complicated geometry... it takes a lot of time to generate the tree
+    "HXT"                => 10, # Similar to Delaunay but with a different algorithm that use redundant elements from my point of view
 )
 
 algorithm = "Delaunay"
@@ -131,16 +131,30 @@ definition = [
     :z_range => (-w/2 + (r + 4*σ_r + tol_sphere), w/2 - (r + 4*σ_r + tol_sphere)))),
 
     (RigidCockle, Dict(
-    :N => N_cockles,
-    :brep_path => cockle_brep_path,
-    :r_distribution => Normal(by_default_radius, σ_r_cockle),
-    :by_default_radius => by_default_radius,
-    :x_range => (-L/2 + (by_default_radius + 4*σ_r_cockle), L/2 - (by_default_radius + 4*σ_r_cockle)),
-    :y_range => (0+(by_default_radius + 4*σ_r_cockle), t_P-(by_default_radius + 4*σ_r_cockle)),
-    :z_range => (-w/2 + (by_default_radius + 4*σ_r_cockle), w/2 - (by_default_radius + 4*σ_r_cockle)),
-    :α_range => (0, 2π),
-    :β_range => (0, π/2),
-    :γ_range => (0, 2π)))
+        :cockle_type => :open, 
+        :N => N_open_cockles, 
+        :r_distribution   => Normal(by_default_radius, σ_r_cockle),
+        :by_default_radius=> by_default_radius,
+        :x_range          => (-L/2 + (by_default_radius + 4*σ_r_cockle), L/2 - (by_default_radius + 4*σ_r_cockle)),
+        :y_range          => (0 + (by_default_radius + 4*σ_r_cockle), t_P - (by_default_radius + 4*σ_r_cockle)),
+        :z_range          => (-w/2 + (by_default_radius + 4*σ_r_cockle), w/2 - (by_default_radius + 4*σ_r_cockle)),
+        :α_range          => (0, 2π),
+        :β_range          => (0, π/2),
+        :γ_range          => (0, 2π)
+    )),
+    
+    (RigidCockle, Dict(
+        :cockle_type => :closed, 
+        :N => N_closed_cockles,
+        :r_distribution   => Normal(by_default_radius, σ_r_cockle),
+        :by_default_radius=> by_default_radius,
+        :x_range          => (-L/2 + (by_default_radius + 4*σ_r_cockle), L/2 - (by_default_radius + 4*σ_r_cockle)),
+        :y_range          => (0 + (by_default_radius + 4*σ_r_cockle), t_P - (by_default_radius + 4*σ_r_cockle)),
+        :z_range          => (-w/2 + (by_default_radius + 4*σ_r_cockle), w/2 - (by_default_radius + 4*σ_r_cockle)),
+        :α_range          => (0, 2π),
+        :β_range          => (0, π/2),
+        :γ_range          => (0, 2π)
+    ))
 ]
 
 # Generate the animals
