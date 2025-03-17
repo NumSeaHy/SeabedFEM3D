@@ -132,7 +132,7 @@ definition = [
 
     (RigidCockle, Dict(
     :N => N_cockles,
-    :brep_path => cockle_closed_brep_path,
+    :brep_path => cockle_brep_path,
     :r_distribution => Normal(by_default_radius, σ_r_cockle),
     :by_default_radius => by_default_radius,
     :x_range => (-L/2 + (by_default_radius + 4*σ_r_cockle), L/2 - (by_default_radius + 4*σ_r_cockle)),

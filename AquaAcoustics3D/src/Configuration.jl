@@ -11,11 +11,11 @@ using .SedimentModels
 using .BiotStollFuncs
 
 # Domain parametrization
-L = 1 # Length of the domain [m]
-t_F = 0.4 # Height of the domain [m]
-t_P = 0.8 # Height of the porous domain [m]
-w = 1
-d_PML = 0.1 # Thickness of the PML [m]
+L = 0.2 # Length of the domain [m]
+t_F = 0.1 # Height of the domain [m]
+t_P = 0.2 # Height of the porous domain [m]
+w = 0.2
+d_PML = 0.05 # Thickness of the PML [m]
 
 # Scattering objects parametrization
     
@@ -27,19 +27,19 @@ d_PML = 0.1 # Thickness of the PML [m]
     tol_sphere = 0.5 * r # Tolerance for the spheres to avoid collisions with the boundaries of the physical domain
     
     # Cockle parametrization
-    N_cockles = 1 # Number of cockles in the porous domain [-]
+    N_cockles = 2 # Number of cockles in the porous domain [-]
     by_default_radius =  0.075/2 # Default radius of the cockle measured in the real geometry[m]
-    σ_r_cockle = 0.05 # Standard deviation of the radius of the cockle [m]
+    σ_r_cockle = 0.01 # Standard deviation of the radius of the cockle [m]
     cockle_brep_path = "./cockle_geometries/Cockle.brep"
     cockle_closed_brep_path = "./cockle_geometries/ClosedCockle.brep"
-    max_iterations = 1000 # Maximum number of iterations to find a suitable position for the cockle
+    max_iterations = 50000 # Maximum number of iterations to find a suitable position for the cockle
     
 
 # Transducer pressure 
 P_0 = 5e5im
 
 # Frequency parameters
-f = 5e3
+f = 15e3
 ω = 2 * π * f
 
 # Fluid domains properties
