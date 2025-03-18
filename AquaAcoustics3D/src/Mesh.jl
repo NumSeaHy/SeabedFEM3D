@@ -115,6 +115,7 @@ gmsh.model.occ.synchronize()  # Single synchronize after loop
 
 
 # Definition of the objects of the bottom
+# Definition of the objects of the bottom
 definition = [
     (RigidSphere, Dict(
     :N => N_rigid_spheres,
@@ -133,11 +134,11 @@ definition = [
     (RigidCockle, Dict(
         :cockle_type => :open, 
         :N => N_open_cockles, 
-        :r_distribution   => Normal(by_default_radius, σ_r_cockle),
-        :by_default_radius=> by_default_radius,
-        :x_range          => (-L/2 + (by_default_radius + 4*σ_r_cockle), L/2 - (by_default_radius + 4*σ_r_cockle)),
-        :y_range          => (0 + (by_default_radius + 4*σ_r_cockle), t_P - (by_default_radius + 4*σ_r_cockle)),
-        :z_range          => (-w/2 + (by_default_radius + 4*σ_r_cockle), w/2 - (by_default_radius + 4*σ_r_cockle)),
+        :r_distribution   => Normal(by_default_cockle_radius, σ_r_cockle),
+        :by_default_radius=> by_default_cockle_radius,
+        :x_range          => (-L/2 + (by_default_cockle_radius + 4*σ_r_cockle), L/2 - (by_default_cockle_radius + 4*σ_r_cockle)),
+        :y_range          => (0 + (by_default_cockle_radius + 4*σ_r_cockle), t_P - (by_default_cockle_radius + 4*σ_r_cockle)),
+        :z_range          => (-w/2 + (by_default_cockle_radius + 4*σ_r_cockle), w/2 - (by_default_cockle_radius + 4*σ_r_cockle)),
         :α_range          => (0, 2π),
         :β_range          => (0, π/2),
         :γ_range          => (0, 2π)
@@ -146,11 +147,25 @@ definition = [
     (RigidCockle, Dict(
         :cockle_type => :closed, 
         :N => N_closed_cockles,
-        :r_distribution   => Normal(by_default_radius, σ_r_cockle),
-        :by_default_radius=> by_default_radius,
-        :x_range          => (-L/2 + (by_default_radius + 4*σ_r_cockle), L/2 - (by_default_radius + 4*σ_r_cockle)),
-        :y_range          => (0 + (by_default_radius + 4*σ_r_cockle), t_P - (by_default_radius + 4*σ_r_cockle)),
-        :z_range          => (-w/2 + (by_default_radius + 4*σ_r_cockle), w/2 - (by_default_radius + 4*σ_r_cockle)),
+        :r_distribution   => Normal(by_default_cockle_radius, σ_r_cockle),
+        :by_default_radius=> by_default_cockle_radius,
+        :x_range          => (-L/2 + (by_default_cockle_radius + 4*σ_r_cockle), L/2 - (by_default_cockle_radius + 4*σ_r_cockle)),
+        :y_range          => (0 + (by_default_cockle_radius + 4*σ_r_cockle), t_P - (by_default_cockle_radius + 4*σ_r_cockle)),
+        :z_range          => (-w/2 + (by_default_cockle_radius + 4*σ_r_cockle), w/2 - (by_default_cockle_radius + 4*σ_r_cockle)),
+        :α_range          => (0, 2π),
+        :β_range          => (0, π/2),
+        :γ_range          => (0, 2π)
+    )),
+
+
+    (RigidQueenScallop, Dict(
+        :cockle_type => :closed, 
+        :N => N_closed_queenscallops,
+        :r_distribution   => Normal(by_default_queenscallop_radius, σ_r_cockle),
+        :by_default_radius=> by_default_queenscallop_radius,
+        :x_range          => (-L/2 + (by_default_queenscallop_radius + 4*σ_r_cockle), L/2 - (by_default_queenscallop_radius + 4*σ_r_cockle)),
+        :y_range          => (0 + (by_default_queenscallop_radius + 4*σ_r_cockle), t_P - (by_default_queenscallop_radius + 4*σ_r_cockle)),
+        :z_range          => (-w/2 + (by_default_queenscallop_radius + 4*σ_r_cockle), w/2 - (by_default_queenscallop_radius + 4*σ_r_cockle)),
         :α_range          => (0, 2π),
         :β_range          => (0, π/2),
         :γ_range          => (0, 2π)
@@ -163,12 +178,14 @@ println("...Generating the scenarios...")
 animals = generate_animals(definition, max_iterations)
 
 rigid_cockle = [animal for animal in animals if isa(animal, RigidCockle)]
+rigid_queenscallop = [animal for animal in animals if isa(animal, RigidQueenScallop)]
 
 println("...Generating the geometries...")
 v_cockle = [generate_geometry(animal) for animal in rigid_cockle]
+v_queenscallop = [generate_geometry(animal) for animal in rigid_queenscallop]
 
 # Perform a boolean subtraction (subtract the sphere from the box)
-cut_operation = gmsh.model.occ.cut([(3, porous.tag)], [(3, i) for i in v_cockle])
+cut_operation = gmsh.model.occ.cut([(3, porous.tag)], [(3, i) for i in v_queenscallop])
 
 gmsh.model.occ.synchronize()  # Single synchronize after loop
 
@@ -178,6 +195,7 @@ porous.tag = cut_operation[1][1][2]
 # Identify each of the surfaces
 surfaces = gmsh.model.occ.getEntities(2)
 surface_cockles_marker = []
+surface_queenscallops_marker = []
 surface_boundaries_marker = []
 
 
@@ -189,6 +207,13 @@ for surface in surfaces
         xmin, ymin, zmin, xmax, ymax, zmax = cockle.bounding_box
         if xmin < com[1] < xmax && ymin < com[2] < ymax && zmin < com[3] < zmax
             push!(surface_cockles_marker, surface[2])
+        end
+    end
+
+    for queenscallop in rigid_queenscallop
+        xmin, ymin, zmin, xmax, ymax, zmax = queenscallop.bounding_box
+        if xmin < com[1] < xmax && ymin < com[2] < ymax && zmin < com[3] < zmax
+            push!(surface_queenscallops_marker, surface[2])
         end
     end
     
@@ -313,16 +338,16 @@ gmsh.model.mesh.setSize(ov_cockles, h_cockle)
 gmsh.model.mesh.generate(3)
 
 # Save the resulting mesh to a file
-gmsh.write("./data/fluid_clam_brep_"*algorithm*".msh")
+gmsh.write("./data/fluid_queenscallop_brep_"*algorithm*".msh")
 
 # Finalize Gmsh session
 gmsh.finalize()
 
 # Convert the mesh to the Gridap format
-model = GmshDiscreteModel("./data/fluid_clam_brep_"*algorithm*".msh")
+model = GmshDiscreteModel("./data/fluid_queenscallop_brep_"*algorithm*".msh")
 
 # Write the mesh to a vtk file
-writevtk(model,"./results/fluid_clam_brep_"*algorithm)
+writevtk(model,"./results/fluid_queenscallop_brep_"*algorithm)
 
 # # Extract the boundary triangulation
 # Γ = BoundaryTriangulation(model, tags="Clam")

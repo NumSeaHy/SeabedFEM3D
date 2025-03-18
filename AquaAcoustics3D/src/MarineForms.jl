@@ -7,7 +7,7 @@ using BoundingSphere
 using Gmsh
 
 # Export the functions of this module that are going to be used in other modules
-export generate_animals, PorousSphere, RigidSphere, RigidCockle, RigidCockleOpen, RigidCockleClosed, generate_geometry
+export generate_animals, PorousSphere, RigidSphere, RigidCockle, RigidQueenScallop, generate_geometry
 
 "Definition of the abstract type MarineForms."
 abstract type MarineForms end
@@ -17,6 +17,12 @@ abstract type Sphere <: MarineForms end
 
 "Definition of the abstract type Cockle"
 abstract type Cockle <: MarineForms end
+
+"Definition of the abstract type QueenScallop"
+abstract type QueenScallop <: MarineForms end
+
+"Definition of the abstract type Scallop"
+abstract type Scallop <: MarineForms end
 
 # Global cache: maps a brep_path to a tuple of (center, radius)
 const EVOLVING_SPHERE_CACHE = Dict{String, Tuple{Vector{Float64}, Float64}}()
@@ -80,6 +86,33 @@ end
 # Constructor for Closed Cockle
 function RigidCockleClosed(brep_path, x, y, z, scaled_radius, by_default_radius, α, β, γ, bounding_box)
     return RigidCockle(brep_path, x, y, z, scaled_radius, by_default_radius, α, β, γ, bounding_box)
+end
+
+
+"Definition of the rigid QueenScallop object."
+mutable struct RigidQueenScallop <: QueenScallop
+    brep_path::String # Path to the Cockle Brep file
+    x::Float64 # x-coordinate of the center of the Cockle
+    y::Float64 # y-coordinate of the center of the Cockle
+    z::Float64 # z-coordinate of the center of the Cockle
+    scaled_radius::Float64 # Desired radius of the cockle
+    by_default_radius::Float64 # Default radius of the Cockle measure in Real world (Let us see if is or not necessary.........)
+    α::Float64 # Yaw angle to manage the orientation of the Cockle
+    β::Float64 # Pitch angle to manage the orientation of the Cockle
+    γ::Float64 # Roll angle to manage the orientation of the Cockle
+    bounding_box::Tuple{Float64, Float64, Float64, Float64, Float64, Float64} # Bounding box of the Cockle
+    evolving_sphere_center::Vector{Float64}
+    evolving_sphere_radius::Float64
+
+    function RigidQueenScallop(brep_path, x, y, z, scaled_radius, by_default_radius, α, β, γ, bounding_box)
+        center, radius = get_cached_center_and_radius(brep_path)
+        new(brep_path, x, y, z, scaled_radius, by_default_radius, α, β, γ, bounding_box, center, radius)
+    end
+end
+
+# Constructor for Closed QueenScallop
+function RigidQueenScallopClosed(brep_path, x, y, z, scaled_radius, by_default_radius, α, β, γ, bounding_box)
+    return RigidQueenScallop(brep_path, x, y, z, scaled_radius, by_default_radius, α, β, γ, bounding_box)
 end
 
 "Auxiliary functions to define the yaw, pitch and roll rotation angles"
@@ -188,9 +221,47 @@ function generate(::Type{RigidCockle}, params::Dict{Symbol, Any})
      end
 end
 
+function generate(::Type{RigidQueenScallop}, params::Dict{Symbol, Any})
+    # Read the desired cockle type from params. For example, it could be :open or :closed.
+    queen_scallop_type = get(params, :cockle_type, :open)  
+
+    # Choose the brep_path based on the cockle type.
+    brep_path = queen_scallop_type == :open ? "./geometry/queen_scallop_geometries/OpenQueenScallop.brep" : "./geometry/queen_scallop_geometries/ClosedQueenScallop.brep"
+   
+    # Retrieve spatial and distribution parameters.
+    x_range        = get(params, :x_range, (0.0, 1.0))
+    y_range        = get(params, :y_range, (0.0, 1.0))
+    z_range        = get(params, :z_range, (0.0, 1.0))
+    r_distribution = get(params, :r_distribution, Normal(1.0, 0.2))
+    by_default_radius = get(params, :by_default_radius, 1.0)
+    α_range        = get(params, :α_range, (0.0, 0.0))
+    β_range        = get(params, :β_range, (0.0, 0.0))
+    γ_range        = get(params, :γ_range, (0.0, 0.0))
+
+    # Generate the random values (deterministic if RNG is seeded)
+    x = x_range[1] + (x_range[2] - x_range[1]) * rand()
+    y = y_range[1] + (y_range[2] - y_range[1]) * rand()
+    z = z_range[1] + (z_range[2] - z_range[1]) * rand()
+    scaled_radius = rand(r_distribution)
+    α = α_range[1] + (α_range[2] - α_range[1]) * rand()
+    β = β_range[1] + (β_range[2] - β_range[1]) * rand()
+    γ = γ_range[1] + (γ_range[2] - γ_range[1]) * rand()
+
+    # Placeholder for bounding box (adjust as needed)
+    bounding_box = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+
+    # Use the appropriate constructor based on cockle_type.
+    if queen_scallop_type == :open
+        error("Open Queen Scallop not implemented yet")
+    else
+        return RigidQueenScallopClosed(brep_path, x, y, z, scaled_radius, by_default_radius, α, β, γ, bounding_box)
+    end
+end
+
+
 
 "Geometry generation functions"
-function generate_geometry(animal::RigidCockle)
+function generate_geometry(animal::MarineForms)
     
     # Import the solid from the brep file
     object = gmsh.model.occ.importShapes(animal.brep_path)

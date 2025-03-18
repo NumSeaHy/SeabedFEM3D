@@ -20,6 +20,8 @@ w = 0.2
 d_PML = 0.05 # Thickness of the PML [m]
 
 # Scattering objects parametrization
+    # Maximum number of iterations for the scenario generation
+    max_iterations = 100000 # Maximum number of iterations to find a suitable position for the cockle
     
     # Spheres parametrization
     N_rigid_spheres = 0 # Number of rigid spheres in the porous domain [-]
@@ -29,13 +31,18 @@ d_PML = 0.05 # Thickness of the PML [m]
     tol_sphere = 0.5 * r # Tolerance for the spheres to avoid collisions with the boundaries of the physical domain
     
     # Cockle parametrization
-    N_open_cockles = 4 # Number of open cockles in the porous domain [-]
+    N_open_cockles = 0 # Number of open cockles in the porous domain [-]
     # open_cockle_brep_path = "./cockle_geometries/OpenCockle.brep"
-    N_closed_cockles = 4 # Number of closed cockles in the porous domain [-]
+    N_closed_cockles = 0 # Number of closed cockles in the porous domain [-]
     # cockle_closed_brep_path = "./cockle_geometries/ClosedCockle.brep"
-    by_default_radius =  0.075/2 # Default radius of the cockle measured in the real geometry[m]
+    by_default_cockle_radius =  6.1e-2/2 # Default radius of the cockle measured in the real geometry[m]
     σ_r_cockle = 0.01 # Standard deviation of the radius of the cockle [m]
-    max_iterations = 100000 # Maximum number of iterations to find a suitable position for the cockle
+
+    # Queen scallop parametrization
+    N_open_queenscallops = 0 # Number of open queen scallops in the porous domain [-]
+    N_closed_queenscallops = 1 # Number of closed queen scallops in the porous domain [-]
+    by_default_queenscallop_radius =  7.5e-2/2 # Default radius of the queen scallop measured in the real geometry[m]
+    σ_r_queenscallop = 0.01 # Standard deviation of the radius of the queen scallop [m]
     
 
 # Transducer pressure 

@@ -23,11 +23,11 @@ definition = [
     (RigidCockle, Dict(
         :cockle_type => :open, 
         :N => N_open_cockles, 
-        :r_distribution   => Normal(by_default_radius, σ_r_cockle),
-        :by_default_radius=> by_default_radius,
-        :x_range          => (-L/2 + (by_default_radius + 4*σ_r_cockle), L/2 - (by_default_radius + 4*σ_r_cockle)),
-        :y_range          => (0 + (by_default_radius + 4*σ_r_cockle), t_P - (by_default_radius + 4*σ_r_cockle)),
-        :z_range          => (-w/2 + (by_default_radius + 4*σ_r_cockle), w/2 - (by_default_radius + 4*σ_r_cockle)),
+        :r_distribution   => Normal(by_default_cockle_radius, σ_r_cockle),
+        :by_default_radius=> by_default_cockle_radius,
+        :x_range          => (-L/2 + (by_default_cockle_radius + 4*σ_r_cockle), L/2 - (by_default_cockle_radius + 4*σ_r_cockle)),
+        :y_range          => (0 + (by_default_cockle_radius + 4*σ_r_cockle), t_P - (by_default_cockle_radius + 4*σ_r_cockle)),
+        :z_range          => (-w/2 + (by_default_cockle_radius + 4*σ_r_cockle), w/2 - (by_default_cockle_radius + 4*σ_r_cockle)),
         :α_range          => (0, 2π),
         :β_range          => (0, π/2),
         :γ_range          => (0, 2π)
@@ -36,11 +36,25 @@ definition = [
     (RigidCockle, Dict(
         :cockle_type => :closed, 
         :N => N_closed_cockles,
-        :r_distribution   => Normal(by_default_radius, σ_r_cockle),
-        :by_default_radius=> by_default_radius,
-        :x_range          => (-L/2 + (by_default_radius + 4*σ_r_cockle), L/2 - (by_default_radius + 4*σ_r_cockle)),
-        :y_range          => (0 + (by_default_radius + 4*σ_r_cockle), t_P - (by_default_radius + 4*σ_r_cockle)),
-        :z_range          => (-w/2 + (by_default_radius + 4*σ_r_cockle), w/2 - (by_default_radius + 4*σ_r_cockle)),
+        :r_distribution   => Normal(by_default_cockle_radius, σ_r_cockle),
+        :by_default_radius=> by_default_cockle_radius,
+        :x_range          => (-L/2 + (by_default_cockle_radius + 4*σ_r_cockle), L/2 - (by_default_cockle_radius + 4*σ_r_cockle)),
+        :y_range          => (0 + (by_default_cockle_radius + 4*σ_r_cockle), t_P - (by_default_cockle_radius + 4*σ_r_cockle)),
+        :z_range          => (-w/2 + (by_default_cockle_radius + 4*σ_r_cockle), w/2 - (by_default_cockle_radius + 4*σ_r_cockle)),
+        :α_range          => (0, 2π),
+        :β_range          => (0, π/2),
+        :γ_range          => (0, 2π)
+    )),
+
+
+    (RigidQueenScallop, Dict(
+        :cockle_type => :closed, 
+        :N => N_closed_queenscallops,
+        :r_distribution   => Normal(by_default_queenscallop_radius, σ_r_cockle),
+        :by_default_radius=> by_default_queenscallop_radius,
+        :x_range          => (-L/2 + (by_default_queenscallop_radius + 4*σ_r_cockle), L/2 - (by_default_queenscallop_radius + 4*σ_r_cockle)),
+        :y_range          => (0 + (by_default_queenscallop_radius + 4*σ_r_cockle), t_P - (by_default_queenscallop_radius + 4*σ_r_cockle)),
+        :z_range          => (-w/2 + (by_default_queenscallop_radius + 4*σ_r_cockle), w/2 - (by_default_queenscallop_radius + 4*σ_r_cockle)),
         :α_range          => (0, 2π),
         :β_range          => (0, π/2),
         :γ_range          => (0, 2π)
@@ -49,6 +63,3 @@ definition = [
 
 # Generate the animals
 animals = generate_animals(definition, max_iterations)
-
-center, radius = get_evolving_sphere("./clam_geometries/EntireClam.brep")
-center
