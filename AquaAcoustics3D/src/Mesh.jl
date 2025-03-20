@@ -13,7 +13,7 @@ using .MarineForm
 
 # Define the meshing alforithms available in Gmsh to then choose
 meshing_algorithms = Dict(
-    "Delaunay"           => 1, # Best one, but should be used together with the option "Mesh.OptimizeNetgen = 1", if not Gridap will throw an erro
+    "Delaunay"           => 1, # Best one, but should be used together with the option "Mesh.OptimizeNetgen = 1", if not Gridap will throw an error
     "Frontal"            => 4, # Good local mesh around the cockles, but the global mesh is not good (some very very small elements det ≈ 0 ?)
     "Frontal Delaunay"   => 5, # Deprecated seems by looking at the Gmsh.pdf documentation
     "Frontal Hex"        => 6, # I think that not make sense use a hexahedral mesh for this problem... and also seems to be deprecated
@@ -31,7 +31,7 @@ gmsh.option.setNumber("Mesh.Algorithm3D", meshing_algorithms[algorithm])
 gmsh.option.setNumber("Mesh.MinimumElementsPerTwoPi", 6)
 # gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 20)
 gmsh.option.setNumber("Geometry.Tolerance", 1e-9)
-gmsh.option.setNumber("Mesh.OptimizeNetgen", 1)
+gmsh.option.setNumber("Mesh.OptimizeNetgen", 1) # Extremely neccessary, if not used, mesh generated is not compatible with Gridap reader
 # gmsh.option.setNumber("Geometry.OCCThruSectionsDegree", 1)
 gmsh.model.add("BuriedClams")
 
@@ -39,7 +39,7 @@ gmsh.model.add("BuriedClams")
 # Mesh size parameter (ensure variables c and f are defined in Configuration.jl)
 h_f = real(c_F(ω)) / (15 * f)
 h_p = real(c_P(ω)) / (15 * f)
-h_cockle = h_p/2
+h_animal = h_p/2
 
 # Fluid domain
 fluid = add_box_to_gmsh(-L/2, t_P, -w/2, L, t_F, w, "Fluid")
@@ -132,7 +132,8 @@ definition = [
     :z_range => (-w/2 + (r + 4*σ_r + tol_sphere), w/2 - (r + 4*σ_r + tol_sphere)))),
 
     (RigidCockle, Dict(
-        :cockle_type => :open, 
+        :name => "Cockle",
+        :type => :open, 
         :N => N_open_cockles, 
         :r_distribution   => Normal(by_default_cockle_radius, σ_r_cockle),
         :by_default_radius=> by_default_cockle_radius,
@@ -145,7 +146,8 @@ definition = [
     )),
     
     (RigidCockle, Dict(
-        :cockle_type => :closed, 
+        :name => "Cockle",
+        :type => :closed, 
         :N => N_closed_cockles,
         :r_distribution   => Normal(by_default_cockle_radius, σ_r_cockle),
         :by_default_radius=> by_default_cockle_radius,
@@ -159,7 +161,8 @@ definition = [
 
 
     (RigidQueenScallop, Dict(
-        :cockle_type => :closed, 
+        :name => "QueenScallop",
+        :type => :closed, 
         :N => N_closed_queenscallops,
         :r_distribution   => Normal(by_default_queenscallop_radius, σ_r_cockle),
         :by_default_radius=> by_default_queenscallop_radius,
@@ -179,13 +182,20 @@ animals = generate_animals(definition, max_iterations)
 
 rigid_cockle = [animal for animal in animals if isa(animal, RigidCockle)]
 rigid_queenscallop = [animal for animal in animals if isa(animal, RigidQueenScallop)]
+# rigid_scallop = [animal for animal in animals if isa(animal, RigidScallop)]
 
 println("...Generating the geometries...")
-v_cockle = [generate_geometry(animal) for animal in rigid_cockle]
-v_queenscallop = [generate_geometry(animal) for animal in rigid_queenscallop]
+# v_cockle = [generate_geometry(animal) for animal in rigid_cockle]
+# v_queenscallop = [generate_geometry(animal) for animal in rigid_queenscallop]
+# v_scallop = [generate_geometry(animal) for animal in rigid_scallop]
+
+all_object_volumes = [generate_geometry(animal) for animal in animals]
+
+# Join all the geometries of all the animals in a single array to perform then the cut operation
+# all_object_volumes = vcat(v_cockle, v_queenscallop, v_scallop)
 
 # Perform a boolean subtraction (subtract the sphere from the box)
-cut_operation = gmsh.model.occ.cut([(3, porous.tag)], [(3, i) for i in v_queenscallop])
+cut_operation = gmsh.model.occ.cut([(3, porous.tag)], [(3, i) for i in all_object_volumes])
 
 gmsh.model.occ.synchronize()  # Single synchronize after loop
 
@@ -204,14 +214,14 @@ for surface in surfaces
 
     # Identify the surfaces where the cockles are located to apply the boundary condition of the incident field arriving
     for cockle in rigid_cockle
-        xmin, ymin, zmin, xmax, ymax, zmax = cockle.bounding_box
+        xmin, ymin, zmin, xmax, ymax, zmax = cockle.geometry.bounding_box
         if xmin < com[1] < xmax && ymin < com[2] < ymax && zmin < com[3] < zmax
             push!(surface_cockles_marker, surface[2])
         end
     end
 
     for queenscallop in rigid_queenscallop
-        xmin, ymin, zmin, xmax, ymax, zmax = queenscallop.bounding_box
+        xmin, ymin, zmin, xmax, ymax, zmax = queenscallop.geometry.bounding_box
         if xmin < com[1] < xmax && ymin < com[2] < ymax && zmin < com[3] < zmax
             push!(surface_queenscallops_marker, surface[2])
         end
@@ -275,6 +285,7 @@ pml_groups = Dict(
 
 # Set the 2D-physical groups for the surfaces
 surface_cockles_marker = gmsh.model.addPhysicalGroup(2, surface_cockles_marker)
+surface_queenscallops_marker = gmsh.model.addPhysicalGroup(2, surface_queenscallops_marker)
 surface_boundaries_marker = gmsh.model.addPhysicalGroup(2, surface_boundaries_marker)
 
 # Set 3D-physical groups for the fluid domain together with the fluid PMLs
@@ -320,6 +331,7 @@ gmsh.model.setPhysicalName(3, porous_pml_xyz_tag, "porous_PML_xyz")
 # Set 2D-physical names for the physical groups
 gmsh.model.setPhysicalName(2, surface_boundaries_marker, "Boundaries")
 gmsh.model.setPhysicalName(2, surface_cockles_marker, "Cockles")
+gmsh.model.setPhysicalName(2, surface_queenscallops_marker, "QueenScallops")
 
 # Synchronize the model
 gmsh.model.occ.synchronize()
@@ -328,26 +340,28 @@ gmsh.model.occ.synchronize()
 ov_f = gmsh.model.getBoundary([(3, fluid_domain.tag) for fluid_domain in all_fluid_domains], false, false, true)
 ov_p = gmsh.model.getBoundary([(3, porous_domain.tag) for porous_domain in all_porous_domains], false, false, true)
 ov_cockles = gmsh.model.getBoundary([(2, surface_cockles_marker[i]) for i in eachindex(surface_cockles_marker)], false, false, true)
+ov_queenscallops = gmsh.model.getBoundary([(2, surface_queenscallops_marker[i]) for i in eachindex(surface_queenscallops_marker)], false, false, true)
 
 # Set a specific mesh size to each of that points
 gmsh.model.mesh.setSize(ov_f, h_f)
 gmsh.model.mesh.setSize(ov_p, h_p)
-gmsh.model.mesh.setSize(ov_cockles, h_cockle)
+gmsh.model.mesh.setSize(ov_cockles, h_animal)
+gmsh.model.mesh.setSize(ov_queenscallops, h_animal)
 
 # Generate a 3D mesh
 gmsh.model.mesh.generate(3)
 
 # Save the resulting mesh to a file
-gmsh.write("./data/fluid_queenscallop_brep_"*algorithm*".msh")
+gmsh.write("./data/MIX"*algorithm*".msh")
 
 # Finalize Gmsh session
 gmsh.finalize()
 
 # Convert the mesh to the Gridap format
-model = GmshDiscreteModel("./data/fluid_queenscallop_brep_"*algorithm*".msh")
+model = GmshDiscreteModel("./data/MIX"*algorithm*".msh")
 
 # Write the mesh to a vtk file
-writevtk(model,"./results/fluid_queenscallop_brep_"*algorithm)
+writevtk(model,"./results/MIX"*algorithm)
 
 # # Extract the boundary triangulation
 # Γ = BoundaryTriangulation(model, tags="Clam")

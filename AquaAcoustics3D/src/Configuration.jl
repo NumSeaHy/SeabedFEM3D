@@ -32,17 +32,21 @@ d_PML = 0.05 # Thickness of the PML [m]
     
     # Cockle parametrization
     N_open_cockles = 0 # Number of open cockles in the porous domain [-]
-    # open_cockle_brep_path = "./cockle_geometries/OpenCockle.brep"
-    N_closed_cockles = 0 # Number of closed cockles in the porous domain [-]
-    # cockle_closed_brep_path = "./cockle_geometries/ClosedCockle.brep"
+    N_closed_cockles = 1 # Number of closed cockles in the porous domain [-]
     by_default_cockle_radius =  6.1e-2/2 # Default radius of the cockle measured in the real geometry[m]
-    σ_r_cockle = 0.01 # Standard deviation of the radius of the cockle [m]
+    σ_r_cockle = 1e-2 # Standard deviation of the radius of the cockle [m]
 
     # Queen scallop parametrization
     N_open_queenscallops = 0 # Number of open queen scallops in the porous domain [-]
     N_closed_queenscallops = 1 # Number of closed queen scallops in the porous domain [-]
     by_default_queenscallop_radius =  7.5e-2/2 # Default radius of the queen scallop measured in the real geometry[m]
-    σ_r_queenscallop = 0.01 # Standard deviation of the radius of the queen scallop [m]
+    σ_r_queenscallop = 1e-2 # Standard deviation of the radius of the queen scallop [m]
+
+    # Scallop 
+    N_open_scallops = 0 # Number of open scallops in the porous domain [-]
+    N_closed_scallops = 0 # Number of closed scallops in the porous domain [-]
+    by_default_scallop_radius =  10.7e-2/2 # Default radius of the scallop measured in the real geometry[m]
+    σ_r_scallop = 1e-2 # Standard deviation of the radius of the scallop [m]
     
 
 # Transducer pressure 
