@@ -407,13 +407,13 @@ gmsh.model.mesh.setSize(ov_animals, h_animal)
 gmsh.model.mesh.generate(3)
 
 # Save the resulting mesh to a file
-gmsh.write("./data/ANIMALS"*algorithm*".msh")
+gmsh.write("./data/mesh.msh")
 
 # Finalize Gmsh session
 gmsh.finalize()
 
 # Convert the mesh to the Gridap format
-model = GmshDiscreteModel("./data/ANIMALS"*algorithm*".msh")
+model = GmshDiscreteModel("./data/mesh.msh")
 
 # Write the mesh to a vtk file
 writevtk(model,"./results/ANIMALS"*algorithm)
