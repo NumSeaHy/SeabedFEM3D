@@ -71,6 +71,10 @@ c_P(ω) = compute_wave_properties(ω, sediment(ω))[1] + 1im*compute_wave_proper
 k_F(ω) = ω/c_F(ω)
 k_P(ω) = ω/c_P(ω)
 
+# Define the bulk modulus associated with the fluid and porous domains
+K_F(ω) = ρ_F(ω) * c_F(ω)^2
+K_P(ω) = ρ_P(ω) * c_P(ω)^2
+
 # PML parameters
 RPML = 1e-5 # Reflection coefficient of the PML
 σ_0 = -3/4 * log(RPML)/d_PML

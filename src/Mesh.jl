@@ -11,6 +11,9 @@ includet("MarineForms.jl")
 using .Boxes
 using .MarineForm
 
+# Encapsulate the mesh generation in a function
+
+
 # Define the meshing alforithms available in Gmsh to then choose
 meshing_algorithms = Dict(
     "Delaunay"           => 1, # Best one, but should be used together with the option "Mesh.OptimizeNetgen = 1", if not Gridap will throw an error
@@ -221,9 +224,9 @@ definition = [
 println("...Generating the scenarios...")
 animals = generate_animals(definition, max_iterations)
 
-rigid_cockle = [animal for animal in animals if isa(animal, RigidCockle)]
-rigid_queenscallop = [animal for animal in animals if isa(animal, RigidQueenScallop)]
-rigid_scallop = [animal for animal in animals if isa(animal, RigidScallop)]
+# rigid_cockle = [animal for animal in animals if isa(animal, RigidCockle)]
+# rigid_queenscallop = [animal for animal in animals if isa(animal, RigidQueenScallop)]
+# rigid_scallop = [animal for animal in animals if isa(animal, RigidScallop)]
 
 println("...Generating the geometries...")
 # v_cockle = [generate_geometry(animal) for animal in rigid_cockle]
@@ -245,8 +248,9 @@ porous.tag = cut_operation[1][1][2]
 
 # Identify each of the surfaces
 surfaces = gmsh.model.occ.getEntities(2)
-surface_cockles_marker = []
-surface_queenscallops_marker = []
+animals_marker = []
+# surface_cockles_marker = []
+# surface_queenscallops_marker = []
 surface_boundaries_marker = []
 
 
@@ -254,19 +258,25 @@ for surface in surfaces
     com = gmsh.model.occ.getCenterOfMass(surface[1], surface[2])
 
     # Identify the surfaces where the cockles are located to apply the boundary condition of the incident field arriving
-    for cockle in rigid_cockle
-        xmin, ymin, zmin, xmax, ymax, zmax = cockle.geometry.bounding_box
+    for animal in animals
+        xmin, ymin, zmin, xmax, ymax, zmax = animal.geometry.bounding_box
         if xmin < com[1] < xmax && ymin < com[2] < ymax && zmin < com[3] < zmax
-            push!(surface_cockles_marker, surface[2])
+            push!(animals_marker, surface[2])
         end
     end
+    # for cockle in rigid_cockle
+    #     xmin, ymin, zmin, xmax, ymax, zmax = cockle.geometry.bounding_box
+    #     if xmin < com[1] < xmax && ymin < com[2] < ymax && zmin < com[3] < zmax
+    #         push!(surface_cockles_marker, surface[2])
+    #     end
+    # end
 
-    for queenscallop in rigid_queenscallop
-        xmin, ymin, zmin, xmax, ymax, zmax = queenscallop.geometry.bounding_box
-        if xmin < com[1] < xmax && ymin < com[2] < ymax && zmin < com[3] < zmax
-            push!(surface_queenscallops_marker, surface[2])
-        end
-    end
+    # for queenscallop in rigid_queenscallop
+    #     xmin, ymin, zmin, xmax, ymax, zmax = queenscallop.geometry.bounding_box
+    #     if xmin < com[1] < xmax && ymin < com[2] < ymax && zmin < com[3] < zmax
+    #         push!(surface_queenscallops_marker, surface[2])
+    #     end
+    # end
     
     # Identify the boundaries of the PML domain where the homogeneuous dirichlet boundary condition will be applied
     if (abs(com[1]) - L/2 - 0.99 * d_PML) > 0 || (abs(com[3]) - w/2 - 0.99 * d_PML) > 0 || (com[2] + 0.99 * d_PML) < 0 || (com[2] - t_P - t_F - 0.99 * d_PML) > 0
@@ -325,8 +335,9 @@ pml_groups = Dict(
 
 
 # Set the 2D-physical groups for the surfaces
-surface_cockles_marker = gmsh.model.addPhysicalGroup(2, surface_cockles_marker)
-surface_queenscallops_marker = gmsh.model.addPhysicalGroup(2, surface_queenscallops_marker)
+# surface_cockles_marker = gmsh.model.addPhysicalGroup(2, surface_cockles_marker)
+# surface_queenscallops_marker = gmsh.model.addPhysicalGroup(2, surface_queenscallops_marker)
+surface_animals_marker = gmsh.model.addPhysicalGroup(2, animals_marker)
 surface_boundaries_marker = gmsh.model.addPhysicalGroup(2, surface_boundaries_marker)
 
 # Set 3D-physical groups for the fluid domain together with the fluid PMLs
@@ -371,8 +382,9 @@ gmsh.model.setPhysicalName(3, porous_pml_xyz_tag, "porous_PML_xyz")
 
 # Set 2D-physical names for the physical groups
 gmsh.model.setPhysicalName(2, surface_boundaries_marker, "Boundaries")
-gmsh.model.setPhysicalName(2, surface_cockles_marker, "Cockles")
-gmsh.model.setPhysicalName(2, surface_queenscallops_marker, "QueenScallops")
+gmsh.model.setPhysicalName(2, surface_animals_marker, "Animals")
+# gmsh.model.setPhysicalName(2, surface_cockles_marker, "Cockles")
+# gmsh.model.setPhysicalName(2, surface_queenscallops_marker, "QueenScallops")
 
 # Synchronize the model
 gmsh.model.occ.synchronize()
@@ -380,29 +392,31 @@ gmsh.model.occ.synchronize()
 # Get the points that constitutes each of the domains
 ov_f = gmsh.model.getBoundary([(3, fluid_domain.tag) for fluid_domain in all_fluid_domains], false, false, true)
 ov_p = gmsh.model.getBoundary([(3, porous_domain.tag) for porous_domain in all_porous_domains], false, false, true)
-ov_cockles = gmsh.model.getBoundary([(2, surface_cockles_marker[i]) for i in eachindex(surface_cockles_marker)], false, false, true)
-ov_queenscallops = gmsh.model.getBoundary([(2, surface_queenscallops_marker[i]) for i in eachindex(surface_queenscallops_marker)], false, false, true)
+ov_animals = gmsh.model.getBoundary([(2, surface_animals_marker[i]) for i in eachindex(surface_animals_marker)], false, false, true)
+# ov_cockles = gmsh.model.getBoundary([(2, surface_cockles_marker[i]) for i in eachindex(surface_cockles_marker)], false, false, true)
+# ov_queenscallops = gmsh.model.getBoundary([(2, surface_queenscallops_marker[i]) for i in eachindex(surface_queenscallops_marker)], false, false, true)
 
 # Set a specific mesh size to each of that points
 gmsh.model.mesh.setSize(ov_f, h_f)
 gmsh.model.mesh.setSize(ov_p, h_p)
-gmsh.model.mesh.setSize(ov_cockles, h_animal)
-gmsh.model.mesh.setSize(ov_queenscallops, h_animal)
+gmsh.model.mesh.setSize(ov_animals, h_animal)
+# gmsh.model.mesh.setSize(ov_cockles, h_animal)
+# gmsh.model.mesh.setSize(ov_queenscallops, h_animal)
 
 # Generate a 3D mesh
 gmsh.model.mesh.generate(3)
 
 # Save the resulting mesh to a file
-gmsh.write("./data/COCKLE"*algorithm*".msh")
+gmsh.write("./data/ANIMALS"*algorithm*".msh")
 
 # Finalize Gmsh session
 gmsh.finalize()
 
 # Convert the mesh to the Gridap format
-model = GmshDiscreteModel("./data/COCKLE"*algorithm*".msh")
+model = GmshDiscreteModel("./data/ANIMALS"*algorithm*".msh")
 
 # Write the mesh to a vtk file
-writevtk(model,"./results/COCKLE"*algorithm)
+writevtk(model,"./results/ANIMALS"*algorithm)
 
 # # Extract the boundary triangulation
 # Γ = BoundaryTriangulation(model, tags="Clam")
