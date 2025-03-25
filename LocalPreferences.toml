@@ -1,0 +1,10 @@
+[MPIPreferences]
+__clear__ = ["preloads_env_switch"]
+_format = "1.0"
+abi = "OpenMPI"
+binary = "system"
+cclibs = []
+libmpi = "/opt/software/petsc/linux-gnu-complex-64/lib/libmpi.so"
+mpiexec = "/opt/software/petsc/linux-gnu-complex-64/bin/mpiexec"
+preloads = []
+

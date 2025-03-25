@@ -8,7 +8,6 @@ using Revise
 includet("SedimentModels.jl")
 includet("BiotStollFuncs.jl")
 
-
 using .SedimentModels
 using .BiotStollFuncs
 
@@ -53,12 +52,12 @@ d_PML = 0.05 # Thickness of the PML [m]
 P0 = 5e5im
 
 # Frequency parameters
-f = 2e3
+f = 5e3
 ω = 2 * π * f
 
 # Fluid domains properties
-ρ_F(ω) = 4000.
-c_F(ω) = 2000.
+ρ_F(ω) = 1000. + 0.0im # Mass density of the fluid [kg/m^3]
+c_F(ω) = 1432. + 0.0im # Speed of sound in the fluid [m/s]
 η_F = 1.0e-3 # Dynamic viscosity of the fluid [Pa s]
 
 

@@ -416,7 +416,7 @@ gmsh.finalize()
 model = GmshDiscreteModel("./data/mesh.msh")
 
 # Write the mesh to a vtk file
-writevtk(model,"./results/ANIMALS"*algorithm)
+writevtk(model,"./results/mesh")
 
 # # Extract the boundary triangulation
 # Γ = BoundaryTriangulation(model, tags="Clam")
