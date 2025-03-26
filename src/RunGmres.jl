@@ -19,7 +19,7 @@ using .AnalyticalIncident
 model = GmshDiscreteModel("data/mesh.msh")
 
 # Define the incident wave
-u_incident(x) = analytical_incident(x, ω, P0)
+u_incident(x) = spherical_incident_field(x, 0, t_P/2, 0, 0.1, k_P(ω), ρ_P(ω), P0, ω)
 
 # Define the finite element space: Raviart-Thomas of order 1
 order = 1

@@ -1,10 +1,14 @@
 module AnalyticalIncident
 
-export analytical_incident
+export analytical_incident, spherical_incident_field
 
 using Gridap
 using Gridap.Fields
 using SpecialFunctions
+
+function distance(x, x₀, y₀, z₀)
+    return sqrt((x[1]-x₀)^2 + (x[2]-y₀)^2 + (x[3]-z₀)^2)
+end
 
 function analytical_incident(x, ω, P0)
     u_x = P0 + 0.0im

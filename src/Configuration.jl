@@ -52,7 +52,7 @@ d_PML = 0.05 # Thickness of the PML [m]
 P0 = 5e5im
 
 # Frequency parameters
-f = 5e3
+f = 12e3
 ω = 2 * π * f
 
 # Fluid domains properties
